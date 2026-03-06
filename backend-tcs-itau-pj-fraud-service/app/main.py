@@ -11,9 +11,21 @@ ai_provider = AnomalyScoreProvider()
 evidence_repository = FraudEvidenceRepository()
 
 
+def _actuator_health() -> dict:
+    return {
+        "groups": ["liveness", "readiness"],
+        "status": "UP",
+    }
+
+
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    return _actuator_health()
+
+
+@app.get("/actuator/health")
+def actuator_health() -> dict:
+    return _actuator_health()
 
 
 @app.post("/events/payment-created", response_model=FraudDecisionEvent)
