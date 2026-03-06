@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
 from uuid import uuid4
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from .models import PaymentCreatedEvent, FraudDecisionEvent
 from .rules import evaluate_rules
 from .ai_provider import AnomalyScoreProvider
 from .repository import FraudEvidenceRepository
+from .sqs_consumer import start_consumer
+
+load_dotenv()
 
 app = FastAPI(title="fraud-service")
 ai_provider = AnomalyScoreProvider()
@@ -18,6 +22,11 @@ def _actuator_health() -> dict:
     }
 
 
+@app.on_event("startup")
+def on_startup():
+    start_consumer(_process_event_dict)
+
+
 @app.get("/health")
 def health() -> dict:
     return _actuator_health()
@@ -28,8 +37,9 @@ def actuator_health() -> dict:
     return _actuator_health()
 
 
-@app.post("/events/payment-created", response_model=FraudDecisionEvent)
-def process_payment_created(event: PaymentCreatedEvent) -> FraudDecisionEvent:
+def _process_event_dict(body: dict) -> dict:
+    """Shared logic used by both HTTP endpoint and SQS consumer."""
+    event = PaymentCreatedEvent(**body)
     rule_score, reasons = evaluate_rules(event)
     anomaly_score = ai_provider.score(event.paymentId, event.amount, event.cnpj)
     total_score = (rule_score * 0.6) + (anomaly_score * 0.4)
@@ -45,17 +55,20 @@ def process_payment_created(event: PaymentCreatedEvent) -> FraudDecisionEvent:
         reasons=reasons if reasons else ["no_rule_triggered"],
     )
 
-    evidence_repository.save_evidence(
-        {
-            "paymentId": event.paymentId,
-            "cnpj": event.cnpj,
-            "decisionEventId": decision_event.eventId,
-            "decision": decision_event.decision,
-            "ruleScore": str(decision_event.ruleScore),
-            "anomalyScore": str(decision_event.anomalyScore),
-            "reasons": decision_event.reasons,
-            "occurredAt": decision_event.occurredAt,
-        }
-    )
+    evidence_repository.save_evidence({
+        "paymentId": event.paymentId,
+        "cnpj": event.cnpj,
+        "decisionEventId": decision_event.eventId,
+        "decision": decision_event.decision,
+        "ruleScore": str(decision_event.ruleScore),
+        "anomalyScore": str(decision_event.anomalyScore),
+        "reasons": decision_event.reasons,
+        "occurredAt": decision_event.occurredAt,
+    })
 
-    return decision_event
+    return decision_event.model_dump()
+
+
+@app.post("/events/payment-created", response_model=FraudDecisionEvent)
+def process_payment_created(event: PaymentCreatedEvent) -> FraudDecisionEvent:
+    return FraudDecisionEvent(**_process_event_dict(event.model_dump()))

@@ -2,41 +2,36 @@
   "info": {
     "_postman_id": "f2f0b3bf-32d5-4ccf-84f6-3fb43c95a1fd",
     "name": "PJ Payment Orchestrator - Auth + Endpoints",
-    "description": "Collection para testar endpoints com Cognito (Bearer token) e fluxo completo local.",
+    "description": "Collection completa com Cognito auto-login e fluxo end-to-end: Payment → Fraud → Settlement → Notification.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "paymentBaseUrl", "value": "http://localhost:8080" },
-    { "key": "fraudBaseUrl", "value": "http://localhost:8000" },
-    { "key": "settlementBaseUrl", "value": "http://localhost:8082" },
-    { "key": "notificationBaseUrl", "value": "http://localhost:8083" },
-    { "key": "accessToken", "value": "" },
-    { "key": "paymentId", "value": "" },
-    { "key": "fraudEventId", "value": "" },
-    { "key": "fraudDecision", "value": "" },
-    { "key": "settlementStatus", "value": "" },
-    { "key": "cnpj", "value": "12345678000190" },
-    { "key": "amount", "value": "199.90" },
-    { "key": "currency", "value": "BRL" },
-    { "key": "merchantId", "value": "merchant-001" }
+    { "key": "paymentBaseUrl",       "value": "http://localhost:8080" },
+    { "key": "fraudBaseUrl",         "value": "http://localhost:8000" },
+    { "key": "settlementBaseUrl",    "value": "http://localhost:8082" },
+    { "key": "notificationBaseUrl",  "value": "http://localhost:8083" },
+    { "key": "cognitoRegion",        "value": "us-east-2" },
+    { "key": "cognitoClientId",      "value": "" },
+    { "key": "cognitoClientSecret",  "value": "" },
+    { "key": "cognitoUsername",      "value": "gabriel.freitas3110@gmail.com" },
+    { "key": "cognitoPassword",      "value": "Amazon@3110#" },
+    { "key": "accessToken",          "value": "" },
+    { "key": "tokenExpiry",          "value": "0" },
+    { "key": "paymentId",            "value": "" },
+    { "key": "fraudEventId",         "value": "" },
+    { "key": "fraudDecision",        "value": "" },
+    { "key": "settlementStatus",     "value": "" },
+    { "key": "cnpj",                 "value": "12345678000190" },
+    { "key": "amount",               "value": "199.90" },
+    { "key": "currency",             "value": "BRL" },
+    { "key": "merchantId",           "value": "merchant-001" }
   ],
   "item": [
     {
-      "name": "00 - Health and Home",
+      "name": "00 - Health",
       "item": [
         {
-          "name": "Payment Home (public /)",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{paymentBaseUrl}}/",
-              "host": ["{{paymentBaseUrl}}"],
-              "path": [""]
-            }
-          }
-        },
-        {
-          "name": "Payment Health",
+          "name": "Payment Health (8080)",
           "request": {
             "method": "GET",
             "url": {
@@ -44,23 +39,93 @@
               "host": ["{{paymentBaseUrl}}"],
               "path": ["actuator", "health"]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Payment UP', () => pm.response.to.have.status(200));",
+                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Fraud Health",
+          "name": "Fraud Health (8000)",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{fraudBaseUrl}}/health",
+              "raw": "{{fraudBaseUrl}}/actuator/health",
               "host": ["{{fraudBaseUrl}}"],
-              "path": ["health"]
+              "path": ["actuator", "health"]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Fraud UP', () => pm.response.to.have.status(200));",
+                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Settlement Health (8082)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{settlementBaseUrl}}/actuator/health",
+              "host": ["{{settlementBaseUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Settlement UP', () => pm.response.to.have.status(200));",
+                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notification Health (8083)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{notificationBaseUrl}}/actuator/health",
+              "host": ["{{notificationBaseUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Notification UP', () => pm.response.to.have.status(200));",
+                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "01 - Payment API (requires Bearer token)",
+      "name": "01 - Payment API (Bearer token auto)",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -71,6 +136,66 @@
           }
         ]
       },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const now = Date.now();",
+              "const expiry = parseInt(pm.collectionVariables.get('tokenExpiry') || '0');",
+              "if (expiry > now) return;",
+              "",
+              "const clientId     = pm.collectionVariables.get('cognitoClientId');",
+              "const clientSecret = pm.collectionVariables.get('cognitoClientSecret');",
+              "const username     = pm.collectionVariables.get('cognitoUsername');",
+              "const password     = pm.collectionVariables.get('cognitoPassword');",
+              "const region       = pm.collectionVariables.get('cognitoRegion');",
+              "",
+              "if (!clientId || !clientSecret || !username || !password) {",
+              "    console.warn('Cognito vars nao configuradas — defina cognitoClientId, cognitoClientSecret, cognitoUsername e cognitoPassword.');",
+              "    return;",
+              "}",
+              "",
+              "const message    = username + clientId;",
+              "const secretHash = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(message, clientSecret));",
+              "",
+              "pm.sendRequest({",
+              "    url: `https://cognito-idp.${region}.amazonaws.com/`,",
+              "    method: 'POST',",
+              "    header: {",
+              "        'Content-Type': 'application/x-amz-json-1.1',",
+              "        'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'",
+              "    },",
+              "    body: {",
+              "        mode: 'raw',",
+              "        raw: JSON.stringify({",
+              "            AuthFlow: 'USER_PASSWORD_AUTH',",
+              "            ClientId: clientId,",
+              "            AuthParameters: {",
+              "                USERNAME: username,",
+              "                PASSWORD: password,",
+              "                SECRET_HASH: secretHash",
+              "            }",
+              "        })",
+              "    }",
+              "}, function(err, res) {",
+              "    if (err) { console.error('Cognito error:', err); return; }",
+              "    const body = res.json();",
+              "    if (body.AuthenticationResult) {",
+              "        const token = body.AuthenticationResult.AccessToken;",
+              "        const expiresIn = body.AuthenticationResult.ExpiresIn;",
+              "        pm.collectionVariables.set('accessToken', token);",
+              "        pm.collectionVariables.set('tokenExpiry', String(Date.now() + (expiresIn - 60) * 1000));",
+              "        console.log('Token renovado. Expira em', expiresIn, 'segundos.');",
+              "    } else {",
+              "        console.error('Falha no login Cognito:', JSON.stringify(body));",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ],
       "item": [
         {
           "name": "Create Payment",
@@ -95,11 +220,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('paymentId', body.id);"
+                  "pm.collectionVariables.set('paymentId', body.id);",
+                  "console.log('paymentId salvo:', body.id);"
                 ]
               }
             }
@@ -121,8 +245,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', function () {",
-                  "  pm.response.to.have.status(200);",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ID confere', () => {",
+                  "  const id = pm.collectionVariables.get('paymentId');",
+                  "  pm.expect(pm.response.json().id).to.eql(id);",
                   "});"
                 ]
               }
@@ -157,12 +283,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('fraudEventId', body.eventId);",
-                  "pm.collectionVariables.set('fraudDecision', body.decision);"
+                  "pm.collectionVariables.set('fraudDecision', body.decision);",
+                  "pm.test('decision presente', () => pm.expect(['APPROVED','REJECTED']).to.include(body.decision));",
+                  "console.log('Fraud decision:', body.decision, '| ruleScore:', body.ruleScore, '| anomalyScore:', body.anomalyScore);"
                 ]
               }
             }
@@ -196,11 +322,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('settlementStatus', body.status);"
+                  "pm.collectionVariables.set('settlementStatus', body.status);",
+                  "console.log('Settlement status:', body.status);"
                 ]
               }
             }
@@ -215,7 +340,18 @@
               "host": ["{{settlementBaseUrl}}"],
               "path": ["api", "v1", "settlement", "{{paymentId}}"]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -238,7 +374,20 @@
               "host": ["{{notificationBaseUrl}}"],
               "path": ["api", "v1", "notifications"]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 ou 201', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
