@@ -1,0 +1,55 @@
+{
+  "Comment": "Payment orchestration with fraud and settlement",
+  "StartAt": "EvaluateFraud",
+  "States": {
+    "EvaluateFraud": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
+      "TimeoutSeconds": 60,
+      "Next": "FraudDecision"
+    },
+    "FraudDecision": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.decision",
+          "StringEquals": "APPROVED",
+          "Next": "SettlePayment"
+        }
+      ],
+      "Default": "RejectPayment"
+    },
+    "SettlePayment": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "CompensateSettlement"
+        }
+      ],
+      "Next": "NotifySuccess"
+    },
+    "CompensateSettlement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Next": "NotifyCompensation"
+    },
+    "RejectPayment": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Next": "NotifyRejected"
+    },
+    "NotifySuccess": { "Type": "Succeed" },
+    "NotifyCompensation": { "Type": "Succeed" },
+    "NotifyRejected": { "Type": "Succeed" }
+  }
+}

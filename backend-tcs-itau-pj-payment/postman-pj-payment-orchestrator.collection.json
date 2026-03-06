@@ -1,0 +1,333 @@
+{
+  "info": {
+    "_postman_id": "d7d16bfd-f769-44ea-9f98-5ee31f8df0f2",
+    "name": "PJ Payment Orchestrator - Local Flow",
+    "description": "Collection para validar o fluxo local do backend: healthchecks, criacao de pagamento, avaliacao antifraude, liquidacao e notificacao.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.collectionVariables.set('lastRunAt', new Date().toISOString());"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "paymentBaseUrl", "value": "http://localhost:8080" },
+    { "key": "fraudBaseUrl", "value": "http://localhost:8000" },
+    { "key": "settlementBaseUrl", "value": "http://localhost:8082" },
+    { "key": "notificationBaseUrl", "value": "http://localhost:8083" },
+    { "key": "cnpj", "value": "12345678000190" },
+    { "key": "amount", "value": "199.90" },
+    { "key": "currency", "value": "BRL" },
+    { "key": "merchantId", "value": "merchant-001" },
+    { "key": "paymentId", "value": "" },
+    { "key": "fraudEventId", "value": "" },
+    { "key": "fraudDecision", "value": "" },
+    { "key": "settlementStatus", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Healthchecks",
+      "item": [
+        {
+          "name": "Payment Service - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{paymentBaseUrl}}/actuator/health",
+              "host": ["{{paymentBaseUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fraud Service - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fraudBaseUrl}}/health",
+              "host": ["{{fraudBaseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Settlement Service - Health Endpoint Placeholder",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{settlementBaseUrl}}/api/v1/settlement/non-existing",
+              "host": ["{{settlementBaseUrl}}"],
+              "path": ["api", "v1", "settlement", "non-existing"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Service respondeu', function () {",
+                  "  pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Payment",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cnpj\": \"{{cnpj}}\",\n  \"amount\": {{amount}},\n  \"currency\": \"{{currency}}\",\n  \"merchantId\": \"{{merchantId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{paymentBaseUrl}}/api/v1/payments",
+              "host": ["{{paymentBaseUrl}}"],
+              "path": ["api", "v1", "payments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('paymentId', body.id);",
+                  "pm.test('paymentId retornado', function () {",
+                  "  pm.expect(body.id).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payment By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{paymentBaseUrl}}/api/v1/payments/{{paymentId}}",
+              "host": ["{{paymentBaseUrl}}"],
+              "path": ["api", "v1", "payments", "{{paymentId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Status inicial CREATED', function () {",
+                  "  pm.expect(body.status).to.eql('CREATED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Fraud",
+      "item": [
+        {
+          "name": "Process payment.created event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{$guid}}\",\n  \"eventType\": \"payment.created.v1\",\n  \"occurredAt\": \"{{$isoTimestamp}}\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"cnpj\": \"{{cnpj}}\",\n  \"amount\": {{amount}},\n  \"currency\": \"{{currency}}\",\n  \"merchantId\": \"{{merchantId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{fraudBaseUrl}}/events/payment-created",
+              "host": ["{{fraudBaseUrl}}"],
+              "path": ["events", "payment-created"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('fraudEventId', body.eventId);",
+                  "pm.collectionVariables.set('fraudDecision', body.decision);",
+                  "pm.test('decision valida', function () {",
+                  "  pm.expect(['APPROVED', 'REJECTED']).to.include(body.decision);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Settlement",
+      "item": [
+        {
+          "name": "Handle Fraud Decision",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentId\": \"{{paymentId}}\",\n  \"decision\": \"{{fraudDecision}}\",\n  \"eventId\": \"{{fraudEventId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{settlementBaseUrl}}/api/v1/settlement/fraud-decision",
+              "host": ["{{settlementBaseUrl}}"],
+              "path": ["api", "v1", "settlement", "fraud-decision"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('settlementStatus', body.status);",
+                  "pm.test('status settlement valido', function () {",
+                  "  pm.expect(['SETTLED', 'FRAUD_REJECTED']).to.include(body.status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Settlement Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{settlementBaseUrl}}/api/v1/settlement/{{paymentId}}",
+              "host": ["{{settlementBaseUrl}}"],
+              "path": ["api", "v1", "settlement", "{{paymentId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Notification",
+      "item": [
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentId\": \"{{paymentId}}\",\n  \"status\": \"{{settlementStatus}}\"\n}"
+            },
+            "url": {
+              "raw": "{{notificationBaseUrl}}/api/v1/notifications",
+              "host": ["{{notificationBaseUrl}}"],
+              "path": ["api", "v1", "notifications"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Canal de notificacao definido', function () {",
+                  "  pm.expect(body.channel).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

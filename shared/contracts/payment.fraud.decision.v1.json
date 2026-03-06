@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "payment.fraud.decision.v1",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "occurredAt",
+    "paymentId",
+    "decision",
+    "ruleScore",
+    "anomalyScore",
+    "reasons"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "payment.fraud.decision.v1" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "paymentId": { "type": "string", "format": "uuid" },
+    "decision": { "type": "string", "enum": ["APPROVED", "REJECTED"] },
+    "ruleScore": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "anomalyScore": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

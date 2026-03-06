@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pj-payment-postgres
+    environment:
+      POSTGRES_DB: payment_orchestrator
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_orchestrator"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:4.6.0
+    container_name: pj-payment-localstack
+    environment:
+      - SERVICES=sqs,sns,stepfunctions,dynamodb
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - "./.localstack:/var/lib/localstack"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:latest
+    container_name: pj-payment-dynamodb-admin
+    environment:
+      DYNAMO_ENDPOINT: http://localstack:4566
+    ports:
+      - "8001:8001"
+    depends_on:
+      localstack:
+        condition: service_healthy
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: pj-payment-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: pj-payment-prometheus
+    volumes:
+      - "../ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+    ports:
+      - "9090:9090"
+

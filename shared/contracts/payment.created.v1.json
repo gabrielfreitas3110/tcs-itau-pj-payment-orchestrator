@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "payment.created.v1",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "occurredAt",
+    "paymentId",
+    "cnpj",
+    "amount",
+    "currency",
+    "merchantId"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "payment.created.v1" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "paymentId": { "type": "string", "format": "uuid" },
+    "cnpj": { "type": "string" },
+    "amount": { "type": "number", "minimum": 0.01 },
+    "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+    "merchantId": { "type": "string" }
+  }
+}
