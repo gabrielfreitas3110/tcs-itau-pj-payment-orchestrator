@@ -1,0 +1,238 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Observability stack — CloudWatch Logs, DLQ Alarms and Dashboard for PJ Payment Orchestrator
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email address to receive DLQ alarm notifications
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging, dev]
+
+Resources:
+
+  # ─── Log Groups ───────────────────────────────────────────────────────────────
+
+  PaymentServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /pj-payment/payment-service
+      RetentionInDays: 30
+
+  FraudServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /pj-payment/fraud-service
+      RetentionInDays: 30
+
+  SettlementServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /pj-payment/settlement-service
+      RetentionInDays: 30
+
+  NotificationServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /pj-payment/notification-service
+      RetentionInDays: 30
+
+  # ─── SNS Topic for Alarms ─────────────────────────────────────────────────────
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: pj-payment-alarms
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # ─── DLQ CloudWatch Alarms ────────────────────────────────────────────────────
+
+  PaymentCreatedDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: pj-payment-created-dlq-not-empty
+      AlarmDescription: Mensagens na DLQ payment-created — verificar erros no fraud-service
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: payment-created-dlq
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+      OKActions:
+        - !Ref AlarmTopic
+
+  SettlementDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: pj-payment-settlement-dlq-not-empty
+      AlarmDescription: Mensagens na DLQ payment-settlement — verificar erros no settlement-service
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: payment-settlement-dlq
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+      OKActions:
+        - !Ref AlarmTopic
+
+  NotificationDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: pj-payment-notification-dlq-not-empty
+      AlarmDescription: Mensagens na DLQ payment-notification — verificar erros no notification-service
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: payment-notification-dlq
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+      OKActions:
+        - !Ref AlarmTopic
+
+  # ─── CloudWatch Dashboard ─────────────────────────────────────────────────────
+
+  PaymentDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: pj-payment-orchestrator
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0, "y": 0, "width": 24, "height": 2,
+              "properties": {
+                "markdown": "# PJ Payment Orchestrator\nMonitora filas SQS, DLQs e logs de todos os microserviços."
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 2, "width": 12, "height": 6,
+              "properties": {
+                "title": "SQS — Mensagens nas Filas (profundidade)",
+                "metrics": [
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "payment-created", {"label": "payment-created"}],
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "payment-settlement", {"label": "payment-settlement"}],
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "payment-notification", {"label": "payment-notification"}]
+                ],
+                "period": 60,
+                "stat": "Maximum",
+                "view": "timeSeries",
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12, "y": 2, "width": 12, "height": 6,
+              "properties": {
+                "title": "DLQ — Mensagens não processadas",
+                "metrics": [
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "payment-created-dlq", {"label": "payment-created-dlq", "color": "#d62728"}],
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "payment-settlement-dlq", {"label": "payment-settlement-dlq", "color": "#ff7f0e"}],
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "payment-notification-dlq", {"label": "payment-notification-dlq", "color": "#9467bd"}]
+                ],
+                "period": 60,
+                "stat": "Maximum",
+                "view": "timeSeries",
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 8, "width": 12, "height": 6,
+              "properties": {
+                "title": "SQS — Mensagens Enviadas (throughput)",
+                "metrics": [
+                  ["AWS/SQS", "NumberOfMessagesSent", "QueueName", "payment-created"],
+                  ["AWS/SQS", "NumberOfMessagesSent", "QueueName", "payment-settlement"],
+                  ["AWS/SQS", "NumberOfMessagesSent", "QueueName", "payment-notification"]
+                ],
+                "period": 60,
+                "stat": "Sum",
+                "view": "timeSeries",
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12, "y": 8, "width": 12, "height": 6,
+              "properties": {
+                "title": "SQS — Mensagens Processadas (deletadas)",
+                "metrics": [
+                  ["AWS/SQS", "NumberOfMessagesDeleted", "QueueName", "payment-created"],
+                  ["AWS/SQS", "NumberOfMessagesDeleted", "QueueName", "payment-settlement"],
+                  ["AWS/SQS", "NumberOfMessagesDeleted", "QueueName", "payment-notification"]
+                ],
+                "period": 60,
+                "stat": "Sum",
+                "view": "timeSeries",
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "alarm",
+              "x": 0, "y": 14, "width": 24, "height": 4,
+              "properties": {
+                "title": "Status dos Alarmes DLQ",
+                "alarms": [
+                  "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:pj-payment-created-dlq-not-empty",
+                  "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:pj-payment-settlement-dlq-not-empty",
+                  "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:pj-payment-notification-dlq-not-empty"
+                ]
+              }
+            },
+            {
+              "type": "log",
+              "x": 0, "y": 18, "width": 12, "height": 6,
+              "properties": {
+                "title": "Logs — payment-service (últimos erros)",
+                "query": "SOURCE '/pj-payment/payment-service' | fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20",
+                "region": "${AWS::Region}",
+                "view": "table"
+              }
+            },
+            {
+              "type": "log",
+              "x": 12, "y": 18, "width": 12, "height": 6,
+              "properties": {
+                "title": "Logs — fraud-service (últimos erros)",
+                "query": "SOURCE '/pj-payment/fraud-service' | fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20",
+                "region": "${AWS::Region}",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardUrl:
+    Description: URL do CloudWatch Dashboard
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=pj-payment-orchestrator"
+
+  AlarmTopicArn:
+    Description: ARN do SNS Topic para alertas
+    Value: !Ref AlarmTopic

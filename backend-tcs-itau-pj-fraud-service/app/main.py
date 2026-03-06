@@ -1,7 +1,13 @@
+import logging
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
+
+import boto3
+import watchtower
 from dotenv import load_dotenv
 from fastapi import FastAPI
+
 from .models import PaymentCreatedEvent, FraudDecisionEvent
 from .rules import evaluate_rules
 from .ai_provider import AnomalyScoreProvider
@@ -9,6 +15,31 @@ from .repository import FraudEvidenceRepository
 from .sqs_consumer import start_consumer
 
 load_dotenv()
+
+
+def _configure_cloudwatch_logging() -> None:
+    """Attach CloudWatch Logs handler when AWS_CLOUDWATCH_LOG_GROUP is set."""
+    log_group = os.getenv("AWS_CLOUDWATCH_LOG_GROUP")
+    if not log_group:
+        return
+    try:
+        region = os.getenv("AWS_REGION", "us-east-2")
+        cw_client = boto3.client("logs", region_name=region)
+        handler = watchtower.CloudWatchLogHandler(
+            log_group=log_group,
+            stream_name="fraud-service",
+            boto3_client=cw_client,
+            create_log_group=False,
+        )
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s - %(message)s"))
+        logging.getLogger().addHandler(handler)
+        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger(__name__).info("[CloudWatch] Logging configurado: group=%s", log_group)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("[CloudWatch] Falha ao configurar logging: %s", exc)
+
+
+_configure_cloudwatch_logging()
 
 app = FastAPI(title="fraud-service")
 ai_provider = AnomalyScoreProvider()

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty name="appName" source="spring.application.name" defaultValue="payment-service"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="aws">
+        <appender name="CLOUDWATCH" class="ca.pjer.logback.AwsLogsAppender">
+            <logGroupName>/pj-payment/${appName}</logGroupName>
+            <logStreamName>${appName}</logStreamName>
+            <logRegion>${AWS_REGION:-us-east-2}</logRegion>
+            <maxBatchLogEvents>50</maxBatchLogEvents>
+            <maxFlushTimeMillis>3000</maxFlushTimeMillis>
+            <maxBlockTimeMillis>0</maxBlockTimeMillis>
+            <retentionTimeDays>30</retentionTimeDays>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CLOUDWATCH"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!aws">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
