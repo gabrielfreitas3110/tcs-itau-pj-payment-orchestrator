@@ -1,0 +1,26 @@
+{
+  "id": "env-local-pj-payment",
+  "name": "PJ Payment — Local",
+  "values": [
+    { "key": "paymentBaseUrl",      "value": "http://localhost:8080",  "enabled": true },
+    { "key": "fraudBaseUrl",        "value": "http://localhost:8000",  "enabled": true },
+    { "key": "settlementBaseUrl",   "value": "http://localhost:8082",  "enabled": true },
+    { "key": "notificationBaseUrl", "value": "http://localhost:8083",  "enabled": true },
+    { "key": "cognitoRegion",       "value": "us-east-2",              "enabled": true },
+    { "key": "cognitoClientId",     "value": "",                       "enabled": true },
+    { "key": "cognitoClientSecret", "value": "",                       "enabled": true },
+    { "key": "cognitoUsername",     "value": "gabriel.freitas3110@gmail.com", "enabled": true },
+    { "key": "cognitoPassword",     "value": "Amazon@3110#",           "enabled": true },
+    { "key": "accessToken",         "value": "",                       "enabled": true },
+    { "key": "tokenExpiry",         "value": "0",                      "enabled": true },
+    { "key": "paymentId",           "value": "",                       "enabled": true },
+    { "key": "fraudEventId",        "value": "",                       "enabled": true },
+    { "key": "fraudDecision",       "value": "",                       "enabled": true },
+    { "key": "settlementStatus",    "value": "",                       "enabled": true },
+    { "key": "cnpj",                "value": "12345678000190",         "enabled": true },
+    { "key": "amount",              "value": "199.90",                 "enabled": true },
+    { "key": "currency",            "value": "BRL",                    "enabled": true },
+    { "key": "merchantId",          "value": "merchant-001",           "enabled": true }
+  ],
+  "_postman_variable_scope": "environment"
+}

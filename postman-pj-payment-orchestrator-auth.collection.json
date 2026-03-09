@@ -2,19 +2,19 @@
   "info": {
     "_postman_id": "f2f0b3bf-32d5-4ccf-84f6-3fb43c95a1fd",
     "name": "PJ Payment Orchestrator - Auth + Endpoints",
-    "description": "Collection completa com Cognito auto-login e fluxo end-to-end: Payment → Fraud → Settlement → Notification.",
+    "description": "Collection completa com Cognito auto-login e fluxo end-to-end: Payment → Fraud → Settlement → Notification.\n\n## Ambientes disponíveis\nImporte os arquivos de ambiente antes de usar:\n- **postman-environment-local.json** → serviços rodando localmente (localhost)\n- **postman-environment-prod.json** → AWS dev (ALB: pjpay-dev-alb-259286641.us-east-2.elb.amazonaws.com)\n\nSelecione o ambiente no canto superior direito do Postman.\nPreencha `cognitoClientId` e `cognitoClientSecret` no ambiente escolhido.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "paymentBaseUrl",       "value": "http://localhost:8080" },
-    { "key": "fraudBaseUrl",         "value": "http://localhost:8000" },
-    { "key": "settlementBaseUrl",    "value": "http://localhost:8082" },
-    { "key": "notificationBaseUrl",  "value": "http://localhost:8083" },
+    { "key": "paymentBaseUrl",       "value": "http://localhost:8080",  "description": "Override pelo ambiente (local/prod)" },
+    { "key": "fraudBaseUrl",         "value": "http://localhost:8000",  "description": "Override pelo ambiente (local/prod)" },
+    { "key": "settlementBaseUrl",    "value": "http://localhost:8082",  "description": "Override pelo ambiente (local/prod)" },
+    { "key": "notificationBaseUrl",  "value": "http://localhost:8083",  "description": "Override pelo ambiente (local/prod)" },
     { "key": "cognitoRegion",        "value": "us-east-2" },
     { "key": "cognitoClientId",      "value": "" },
     { "key": "cognitoClientSecret",  "value": "" },
-    { "key": "cognitoUsername",      "value": "gabriel.freitas3110@gmail.com" },
-    { "key": "cognitoPassword",      "value": "Amazon@3110#" },
+    { "key": "cognitoUsername",      "value": "" },
+    { "key": "cognitoPassword",      "value": "" },
     { "key": "accessToken",          "value": "" },
     { "key": "tokenExpiry",          "value": "0" },
     { "key": "paymentId",            "value": "" },
@@ -58,9 +58,9 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{fraudBaseUrl}}/actuator/health",
+              "raw": "{{fraudBaseUrl}}/health",
               "host": ["{{fraudBaseUrl}}"],
-              "path": ["actuator", "health"]
+              "path": ["health"]
             }
           },
           "event": [
@@ -70,7 +70,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Fraud UP', () => pm.response.to.have.status(200));",
-                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                  "pm.test('status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
                 ]
               }
             }
