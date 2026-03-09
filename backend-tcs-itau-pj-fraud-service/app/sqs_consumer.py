@@ -9,18 +9,22 @@ from botocore.exceptions import ClientError, NoCredentialsError
 logger = logging.getLogger(__name__)
 
 
+def _aws_credentials() -> dict:
+    """Credenciais explícitas do .env. session_token=None quando ausente/vazio."""
+    return {
+        "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+        "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        "aws_session_token": os.getenv("AWS_SESSION_TOKEN") or None,
+        "region_name": os.getenv("AWS_REGION", "us-east-1"),
+    }
+
+
 def _build_sqs_client():
-    return boto3.client(
-        "sqs",
-        region_name=os.getenv("AWS_REGION", "us-east-1"),
-    )
+    return boto3.client("sqs", **_aws_credentials())
 
 
 def _build_sns_client():
-    return boto3.client(
-        "sns",
-        region_name=os.getenv("AWS_REGION", "us-east-1"),
-    )
+    return boto3.client("sns", **_aws_credentials())
 
 
 def _get_queue_url(sqs, queue_name: str) -> str | None:

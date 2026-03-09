@@ -1,0 +1,37 @@
+# Credenciais reais — NUNCA commitar
+**/.env
+**/.env.example
+
+# Terraform — contém senhas e dados sensíveis
+infra/terraform/terraform.tfvars
+infra/terraform/terraform.tfvars.example
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/terraform.tfstate
+infra/terraform/terraform.tfstate.backup
+
+# .env.example — contém chaves AWS
+backend-tcs-itau-pj-payment/.env.example
+
+# Java / Maven
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+
+# Python
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.egg-info/
+dist/
+
+# IntelliJ
+**/.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

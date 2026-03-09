@@ -14,7 +14,27 @@ from .ai_provider import AnomalyScoreProvider
 from .repository import FraudEvidenceRepository
 from .sqs_consumer import start_consumer
 
-load_dotenv()
+load_dotenv(override=True)
+
+# Remove token vazio para não contaminar o boto3 credential chain
+if not os.environ.get("AWS_SESSION_TOKEN"):
+    os.environ.pop("AWS_SESSION_TOKEN", None)
+
+# Garante que logs da aplicação apareçam no console (além do CloudWatch)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+)
+
+
+def _aws_credentials() -> dict:
+    """Credenciais explícitas do .env. session_token=None quando ausente/vazio."""
+    return {
+        "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+        "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        "aws_session_token": os.getenv("AWS_SESSION_TOKEN") or None,
+        "region_name": os.getenv("AWS_REGION", "us-east-2"),
+    }
 
 
 def _configure_cloudwatch_logging() -> None:
@@ -23,8 +43,7 @@ def _configure_cloudwatch_logging() -> None:
     if not log_group:
         return
     try:
-        region = os.getenv("AWS_REGION", "us-east-2")
-        cw_client = boto3.client("logs", region_name=region)
+        cw_client = boto3.client("logs", **_aws_credentials())
         handler = watchtower.CloudWatchLogHandler(
             log_group=log_group,
             stream_name="fraud-service",

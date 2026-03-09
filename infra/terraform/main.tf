@@ -21,6 +21,8 @@ locals {
     },
     var.tags
   )
+  # Prefixo curto para recursos com limite de 32 chars (ex: ALB target groups)
+  short_prefix = "pjpay-${var.environment}"
 }
 
 resource "aws_sqs_queue" "payment_created_dlq" {
@@ -85,6 +87,54 @@ resource "aws_sns_topic_subscription" "notification_sqs_subscription" {
   topic_arn            = aws_sns_topic.fraud_decision.arn
   protocol             = "sqs"
   endpoint             = aws_sqs_queue.notification.arn
+  raw_message_delivery = true
+}
+
+# --------------------------------------------------------------------------- #
+# SQS — payment-settlement (consumed by settlement-service)
+# --------------------------------------------------------------------------- #
+
+resource "aws_sqs_queue" "payment_settlement_dlq" {
+  name                      = "${var.settlement_queue_name}-dlq"
+  message_retention_seconds = var.sqs_message_retention_seconds
+  tags                      = local.common_tags
+}
+
+resource "aws_sqs_queue" "payment_settlement" {
+  name                      = var.settlement_queue_name
+  message_retention_seconds = var.sqs_message_retention_seconds
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.payment_settlement_dlq.arn
+    maxReceiveCount     = 5
+  })
+  tags = local.common_tags
+}
+
+resource "aws_sqs_queue_policy" "settlement_allow_sns" {
+  queue_url = aws_sqs_queue.payment_settlement.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowFraudDecisionTopicPublish"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.payment_settlement.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_sns_topic.fraud_decision.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_sns_topic_subscription" "settlement_sqs_subscription" {
+  topic_arn            = aws_sns_topic.fraud_decision.arn
+  protocol             = "sqs"
+  endpoint             = aws_sqs_queue.payment_settlement.arn
   raw_message_delivery = true
 }
 

@@ -8,20 +8,14 @@ class FraudEvidenceRepository:
         endpoint = os.getenv("AWS_ENDPOINT") or None
         region = os.getenv("AWS_REGION", "us-east-1")
         self.table_name = os.getenv("FRAUD_EVIDENCE_TABLE", "payment-fraud-evidence")
-        # For LocalStack runs, use test credentials when not explicitly provided.
-        resource_kwargs = {
-            "service_name": "dynamodb",
-            "endpoint_url": endpoint,
-            "region_name": region,
-        }
-        if endpoint:
-            resource_kwargs["aws_access_key_id"] = os.getenv("AWS_ACCESS_KEY_ID", "test")
-            resource_kwargs["aws_secret_access_key"] = os.getenv("AWS_SECRET_ACCESS_KEY", "test")
-            session_token = os.getenv("AWS_SESSION_TOKEN")
-            if session_token:
-                resource_kwargs["aws_session_token"] = session_token
-
-        self.client = boto3.resource(**resource_kwargs)
+        self.client = boto3.resource(
+            "dynamodb",
+            endpoint_url=endpoint,
+            region_name=region,
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=os.getenv("AWS_SESSION_TOKEN") or None,
+        )
 
     def save_evidence(self, item: dict) -> None:
         try:
