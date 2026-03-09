@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -68,5 +69,38 @@ class NotificationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"paymentId\":\"pay-1\",\"status\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void send_serviceThrowsIllegalArgument_shouldReturn422() throws Exception {
+        when(notificationService.dispatch(any(), any()))
+                .thenThrow(new IllegalArgumentException("invalid status"));
+
+        mockMvc.perform(post("/api/v1/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentId\":\"pay-1\",\"status\":\"UNKNOWN\"}"))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void send_serviceThrowsNoSuchElement_shouldReturn404() throws Exception {
+        when(notificationService.dispatch(any(), any()))
+                .thenThrow(new NoSuchElementException("payment not found"));
+
+        mockMvc.perform(post("/api/v1/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentId\":\"pay-1\",\"status\":\"SETTLED\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void send_serviceThrowsUnexpected_shouldReturn500() throws Exception {
+        when(notificationService.dispatch(any(), any()))
+                .thenThrow(new RuntimeException("unexpected"));
+
+        mockMvc.perform(post("/api/v1/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentId\":\"pay-1\",\"status\":\"SETTLED\"}"))
+                .andExpect(status().isInternalServerError());
     }
 }
