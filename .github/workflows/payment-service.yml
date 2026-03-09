@@ -30,9 +30,8 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # Testes unitários — integração com SQL Server é ignorada via -DskipTests por ora
       - name: Build & test
-        run: ./mvnw verify -DskipTests -q
+        run: ./mvnw verify -q
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
