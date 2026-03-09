@@ -1,0 +1,90 @@
+name: fraud-service — CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend-tcs-itau-pj-fraud-service/**'
+      - '.github/workflows/fraud-service.yml'
+
+env:
+  AWS_REGION:   us-east-2
+  ECR_REPO:     pj-payment-orchestrator/fraud-service
+  ECS_CLUSTER:  pj-payment-orchestrator-cluster-dev
+  ECS_SERVICE:  fraud-service
+  TASK_FAMILY:  pj-payment-orchestrator-fraud-service
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-tcs-itau-pj-fraud-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push Docker image
+        id: build-image
+        env:
+          REGISTRY:  ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$ECR_REPO:$IMAGE_TAG .
+          docker tag  $REGISTRY/$ECR_REPO:$IMAGE_TAG $REGISTRY/$ECR_REPO:latest
+          docker push $REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker push $REGISTRY/$ECR_REPO:latest
+          echo "image=$REGISTRY/$ECR_REPO:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update ECS task definition with new image
+        id: task-def
+        env:
+          IMAGE: ${{ steps.build-image.outputs.image }}
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query taskDefinition)
+
+          NEW_DEF=$(echo "$TASK_DEF" | jq \
+            --arg IMAGE "$IMAGE" \
+            '.containerDefinitions[0].image = $IMAGE
+             | del(.taskDefinitionArn,.revision,.status,
+                   .requiresAttributes,.placementConstraints,
+                   .compatibilities,.registeredAt,.registeredBy)')
+
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_DEF" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "task_def_arn=$NEW_ARN" >> $GITHUB_OUTPUT
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster  $ECS_CLUSTER \
+            --service  $ECS_SERVICE \
+            --task-definition ${{ steps.task-def.outputs.task_def_arn }} \
+            --no-cli-pager
