@@ -1,4 +1,4 @@
-package br.com.quickcoders.backendtcsitaupjpayment.interfaces.rest;
+package br.com.quickcoders.backendtcsitaupjnotificationservice.interfaces;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ProblemDetail handleUnexpected(Exception ex) {
-        LOG.error("[Payment] Unexpected error", ex);
+        LOG.error("[Notification] Unexpected error", ex);
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
     }
