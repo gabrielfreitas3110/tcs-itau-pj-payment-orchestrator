@@ -31,7 +31,9 @@ jobs:
           cache: maven
 
       - name: Build & test
-        run: ./mvnw verify -q
+        run: |
+          chmod +x mvnw
+          ./mvnw verify -q
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
