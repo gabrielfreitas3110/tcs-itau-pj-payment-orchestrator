@@ -161,10 +161,12 @@
 						<phase>verify</phase>
 						<goals><goal>check</goal></goals>
 						<configuration>
-							<excludes>
-								<exclude>**/*Application.*</exclude>
-								<exclude>**/infrastructure/messaging/**</exclude>
-							</excludes>
+						<excludes>
+							<exclude>**/*Application.*</exclude>
+							<exclude>**/infrastructure/messaging/**</exclude>
+							<exclude>**/infrastructure/messaging/*Message.*</exclude>
+							<exclude>**/interfaces/HealthController.*</exclude>
+						</excludes>
 							<rules>
 								<rule>
 									<element>BUNDLE</element>

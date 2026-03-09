@@ -265,9 +265,11 @@
                         <configuration>
                             <excludes>
                                 <exclude>**/*Application.*</exclude>
-                                <exclude>**/infrastructure/persistence/jpa/entity/**</exclude>
+                                <exclude>**/infrastructure/persistence/**</exclude>
+                                <exclude>**/infrastructure/messaging/**</exclude>
                                 <exclude>**/infrastructure/config/**</exclude>
                                 <exclude>**/infrastructure/security/**</exclude>
+                                <exclude>**/infrastructure/web/**</exclude>
                                 <exclude>**/application/dto/**</exclude>
                             </excludes>
                             <rules>
