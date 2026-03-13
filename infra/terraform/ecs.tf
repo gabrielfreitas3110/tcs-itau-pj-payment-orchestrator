@@ -47,7 +47,6 @@ resource "aws_ecs_task_definition" "payment_service" {
       { name = "PAYMENT_CREATED_QUEUE", value = aws_sqs_queue.payment_created.name },
       { name = "APP_SECURITY_ENABLED", value = "true" },
       { name = "AWS_SQLSERVER_JDBC_URL", value = "jdbc:sqlserver://${data.aws_db_instance.sqlserver.address}:1433;databaseName=payment_orchestrator;encrypt=true;trustServerCertificate=true" },
-      { name = "SPRING_CLOUD_AWS_CREDENTIALS_INSTANCE_PROFILE", value = "true" },
     ]
 
     secrets = [
@@ -181,7 +180,6 @@ resource "aws_ecs_task_definition" "settlement_service" {
       { name = "AWS_REGION", value = var.aws_region },
       { name = "SETTLEMENT_QUEUE", value = aws_sqs_queue.payment_settlement.name },
       { name = "AWS_SQLSERVER_JDBC_URL", value = "jdbc:sqlserver://${data.aws_db_instance.sqlserver.address}:1433;databaseName=payment_orchestrator;encrypt=true;trustServerCertificate=true" },
-      { name = "SPRING_CLOUD_AWS_CREDENTIALS_INSTANCE_PROFILE", value = "true" },
     ]
 
     secrets = [
@@ -248,7 +246,6 @@ resource "aws_ecs_task_definition" "notification_service" {
       { name = "SPRING_PROFILES_ACTIVE", value = "aws" },
       { name = "AWS_REGION", value = var.aws_region },
       { name = "NOTIFICATION_QUEUE", value = aws_sqs_queue.notification.name },
-      { name = "SPRING_CLOUD_AWS_CREDENTIALS_INSTANCE_PROFILE", value = "true" },
     ]
 
     logConfiguration = {

@@ -126,11 +126,12 @@ resource "aws_iam_role_policy" "ecs_task_app" {
         Sid    = "CloudWatchLogs"
         Effect = "Allow"
         Action = [
+          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
           "logs:DescribeLogStreams",
         ]
-        Resource = ["arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/pj-payment/*:*"]
+        Resource = ["arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/pj-payment/*"]
       },
     ]
   })
