@@ -93,7 +93,7 @@ resource "aws_lb_target_group" "notification_service" {
 }
 
 # --------------------------------------------------------------------------- #
-# Listener HTTP :80 com roteamento por path
+# Listener :80  →  payment-service (default)
 # --------------------------------------------------------------------------- #
 
 resource "aws_lb_listener" "http" {
@@ -101,51 +101,53 @@ resource "aws_lb_listener" "http" {
   port              = 80
   protocol          = "HTTP"
 
-  # Default: payment-service
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.payment_service.arn
   }
 }
 
-resource "aws_lb_listener_rule" "fraud_service" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 10
+# --------------------------------------------------------------------------- #
+# Listener :8000  →  fraud-service
+# --------------------------------------------------------------------------- #
 
-  action {
+resource "aws_lb_listener" "fraud_service" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 8000
+  protocol          = "HTTP"
+
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.fraud_service.arn
   }
-
-  condition {
-    path_pattern { values = ["/events/*", "/health", "/actuator/health", "/docs", "/openapi.json"] }
-  }
 }
 
-resource "aws_lb_listener_rule" "settlement_service" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 20
+# --------------------------------------------------------------------------- #
+# Listener :8082  →  settlement-service
+# --------------------------------------------------------------------------- #
 
-  action {
+resource "aws_lb_listener" "settlement_service" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 8082
+  protocol          = "HTTP"
+
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.settlement_service.arn
   }
-
-  condition {
-    path_pattern { values = ["/api/v1/settlement/*"] }
-  }
 }
 
-resource "aws_lb_listener_rule" "notification_service" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 30
+# --------------------------------------------------------------------------- #
+# Listener :8083  →  notification-service
+# --------------------------------------------------------------------------- #
 
-  action {
+resource "aws_lb_listener" "notification_service" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 8083
+  protocol          = "HTTP"
+
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.notification_service.arn
-  }
-
-  condition {
-    path_pattern { values = ["/api/v1/notifications/*"] }
   }
 }
