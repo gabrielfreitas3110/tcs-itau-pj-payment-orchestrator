@@ -23,3 +23,4 @@ resource "aws_ssm_parameter" "db_password" {
   value = var.db_password
   tags  = local.common_tags
 }
+
