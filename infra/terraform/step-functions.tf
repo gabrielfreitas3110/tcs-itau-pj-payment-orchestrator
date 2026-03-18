@@ -115,6 +115,17 @@ resource "aws_iam_role_policy" "fraud_lambda_app" {
         Action = ["states:StartExecution"]
         Resource = [aws_sfn_state_machine.fraud_analysis.arn]
       },
+      {
+        Sid    = "XRayTracing"
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords",
+          "xray:GetSamplingRules",
+          "xray:GetSamplingTargets",
+        ]
+        Resource = ["*"]
+      },
     ]
   })
 }
@@ -178,6 +189,17 @@ resource "aws_iam_role_policy" "step_functions_fraud_policy" {
         ]
         Resource = "*"
       },
+      {
+        Sid    = "XRayTracing"
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords",
+          "xray:GetSamplingRules",
+          "xray:GetSamplingTargets",
+        ]
+        Resource = ["*"]
+      },
     ]
   })
 }
@@ -194,6 +216,8 @@ resource "aws_lambda_function" "fraud_trigger" {
   timeout          = 30
   filename         = data.archive_file.fraud_trigger.output_path
   source_code_hash = data.archive_file.fraud_trigger.output_base64sha256
+
+  tracing_config { mode = "Active" }
 
   environment {
     variables = {
@@ -213,6 +237,8 @@ resource "aws_lambda_function" "validate_payment" {
   filename         = data.archive_file.validate_payment.output_path
   source_code_hash = data.archive_file.validate_payment.output_base64sha256
 
+  tracing_config { mode = "Active" }
+
   tags = local.common_tags
 }
 
@@ -224,6 +250,8 @@ resource "aws_lambda_function" "score_bedrock" {
   timeout          = 60
   filename         = data.archive_file.score_bedrock.output_path
   source_code_hash = data.archive_file.score_bedrock.output_base64sha256
+
+  tracing_config { mode = "Active" }
 
   environment {
     variables = {
@@ -243,6 +271,8 @@ resource "aws_lambda_function" "apply_rules" {
   filename         = data.archive_file.apply_rules.output_path
   source_code_hash = data.archive_file.apply_rules.output_base64sha256
 
+  tracing_config { mode = "Active" }
+
   tags = local.common_tags
 }
 
@@ -254,6 +284,8 @@ resource "aws_lambda_function" "publish_decision" {
   timeout          = 30
   filename         = data.archive_file.publish_decision.output_path
   source_code_hash = data.archive_file.publish_decision.output_base64sha256
+
+  tracing_config { mode = "Active" }
 
   environment {
     variables = {
@@ -274,6 +306,10 @@ resource "aws_sfn_state_machine" "fraud_analysis" {
   name     = "${var.project_name}-fraud-analysis-${var.environment}"
   role_arn = aws_iam_role.step_functions_fraud.arn
   type     = "STANDARD"
+
+  tracing_configuration {
+    enabled = true
+  }
 
   definition = jsonencode({
     Comment = "PJ Payment — Fraud analysis pipeline"
