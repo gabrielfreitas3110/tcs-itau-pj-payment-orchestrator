@@ -130,9 +130,11 @@ jobs:
             --names pjpay-dev-alb \
             --query 'LoadBalancers[0].DNSName' --output text)
 
+          echo "ALB: $ALB_DNS"
+
           for i in $(seq 1 10); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://$ALB_DNS/settlement/actuator/health" --max-time 5 || echo "000")
+              "http://$ALB_DNS:8082/actuator/health" --max-time 5 || echo "000")
             echo "Attempt $i: HTTP $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "Health check passed"
