@@ -4,8 +4,8 @@
 # --------------------------------------------------------------------------- #
 
 locals {
-  cluster_name   = aws_ecs_cluster.main.name
-  sfn_arn        = aws_sfn_state_machine.fraud_analysis.arn
+  cluster_name = aws_ecs_cluster.main.name
+  sfn_arn      = aws_sfn_state_machine.fraud_analysis.arn
   lambda_names = {
     trigger          = aws_lambda_function.fraud_trigger.function_name
     validate_payment = aws_lambda_function.validate_payment.function_name
@@ -16,7 +16,7 @@ locals {
 }
 
 # --------------------------------------------------------------------------- #
-# SNS topic for alarm notifications (subscribe manually via console/email)
+# SNS topic for alarm notifications
 # --------------------------------------------------------------------------- #
 
 resource "aws_sns_topic" "alerts" {
@@ -25,7 +25,7 @@ resource "aws_sns_topic" "alerts" {
 }
 
 # --------------------------------------------------------------------------- #
-# CloudWatch Dashboard — PJ Payment Pipeline
+# CloudWatch Dashboard
 # --------------------------------------------------------------------------- #
 
 resource "aws_cloudwatch_dashboard" "pipeline" {
@@ -34,181 +34,176 @@ resource "aws_cloudwatch_dashboard" "pipeline" {
   dashboard_body = jsonencode({
     widgets = [
 
-      # ------------------------------------------------------------------ #
-      # Row 1 — Title
-      # ------------------------------------------------------------------ #
+      # Title
       {
         type   = "text"
-        x      = 0; y = 0; width = 24; height = 2
+        x      = 0
+        y      = 0
+        width  = 24
+        height = 2
         properties = {
           markdown = "# PJ Payment Orchestrator — Pipeline Monitor\n**Ambiente:** ${var.environment} | **Região:** ${var.aws_region}"
         }
       },
 
-      # ------------------------------------------------------------------ #
-      # Row 2 — SQS Queue depths
-      # ------------------------------------------------------------------ #
+      # SQS — payment-created
       {
         type   = "metric"
-        x      = 0; y = 2; width = 8; height = 6
+        x      = 0
+        y      = 2
+        width  = 8
+        height = 6
         properties = {
-          title  = "SQS — payment-created (backlog)"
+          title  = "SQS — payment-created"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible",
-              "QueueName", aws_sqs_queue.payment_created.name,
-              { stat = "Maximum", label = "Visíveis", color = "#1f77b4" }],
-            ["AWS/SQS", "ApproximateNumberOfMessagesNotVisible",
-              "QueueName", aws_sqs_queue.payment_created.name,
-              { stat = "Maximum", label = "Em vôo", color = "#aec7e8" }],
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible",
-              "QueueName", aws_sqs_queue.payment_created_dlq.name,
-              { stat = "Maximum", label = "DLQ", color = "#d62728" }],
-          ]
           period = 60
+          metrics = [
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.payment_created.name, { stat = "Maximum", label = "Visíveis" }],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.payment_created_dlq.name, { stat = "Maximum", label = "DLQ", color = "#d62728" }],
+          ]
         }
       },
+
+      # SQS — payment-settlement
       {
         type   = "metric"
-        x      = 8; y = 2; width = 8; height = 6
+        x      = 8
+        y      = 2
+        width  = 8
+        height = 6
         properties = {
           title  = "SQS — payment-settlement"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible",
-              "QueueName", aws_sqs_queue.payment_settlement.name,
-              { stat = "Maximum", label = "Visíveis", color = "#2ca02c" }],
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible",
-              "QueueName", aws_sqs_queue.payment_settlement_dlq.name,
-              { stat = "Maximum", label = "DLQ", color = "#d62728" }],
-          ]
           period = 60
+          metrics = [
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.payment_settlement.name, { stat = "Maximum", label = "Visíveis" }],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.payment_settlement_dlq.name, { stat = "Maximum", label = "DLQ", color = "#d62728" }],
+          ]
         }
       },
+
+      # SQS — payment-notification
       {
         type   = "metric"
-        x      = 16; y = 2; width = 8; height = 6
+        x      = 16
+        y      = 2
+        width  = 8
+        height = 6
         properties = {
           title  = "SQS — payment-notification"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible",
-              "QueueName", aws_sqs_queue.notification.name,
-              { stat = "Maximum", label = "Visíveis", color = "#ff7f0e" }],
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible",
-              "QueueName", aws_sqs_queue.notification_dlq.name,
-              { stat = "Maximum", label = "DLQ", color = "#d62728" }],
-          ]
           period = 60
+          metrics = [
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.notification.name, { stat = "Maximum", label = "Visíveis" }],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.notification_dlq.name, { stat = "Maximum", label = "DLQ", color = "#d62728" }],
+          ]
         }
       },
 
-      # ------------------------------------------------------------------ #
-      # Row 3 — Step Functions
-      # ------------------------------------------------------------------ #
+      # Step Functions — Execuções
       {
         type   = "metric"
-        x      = 0; y = 8; width = 12; height = 6
+        x      = 0
+        y      = 8
+        width  = 12
+        height = 6
         properties = {
           title  = "Step Functions — Execuções (fraud-analysis)"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [
-            ["AWS/States", "ExecutionsSucceeded",
-              "StateMachineArn", local.sfn_arn,
-              { stat = "Sum", label = "Sucesso", color = "#2ca02c" }],
-            ["AWS/States", "ExecutionsFailed",
-              "StateMachineArn", local.sfn_arn,
-              { stat = "Sum", label = "Falha", color = "#d62728" }],
-            ["AWS/States", "ExecutionsStarted",
-              "StateMachineArn", local.sfn_arn,
-              { stat = "Sum", label = "Iniciadas", color = "#1f77b4" }],
-          ]
           period = 60
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12; y = 8; width = 12; height = 6
-        properties = {
-          title  = "Step Functions — Duração (ms)"
-          view   = "timeSeries"
-          region = var.aws_region
           metrics = [
-            ["AWS/States", "ExecutionTime",
-              "StateMachineArn", local.sfn_arn,
-              { stat = "p50", label = "p50" }],
-            ["AWS/States", "ExecutionTime",
-              "StateMachineArn", local.sfn_arn,
-              { stat = "p95", label = "p95" }],
-            ["AWS/States", "ExecutionTime",
-              "StateMachineArn", local.sfn_arn,
-              { stat = "p99", label = "p99" }],
+            ["AWS/States", "ExecutionsSucceeded", "StateMachineArn", local.sfn_arn, { stat = "Sum", label = "Sucesso", color = "#2ca02c" }],
+            ["AWS/States", "ExecutionsFailed", "StateMachineArn", local.sfn_arn, { stat = "Sum", label = "Falha", color = "#d62728" }],
+            ["AWS/States", "ExecutionsStarted", "StateMachineArn", local.sfn_arn, { stat = "Sum", label = "Iniciadas", color = "#1f77b4" }],
           ]
-          period = 60
         }
       },
 
-      # ------------------------------------------------------------------ #
-      # Row 4 — Lambda errors
-      # ------------------------------------------------------------------ #
+      # Step Functions — Duração
       {
         type   = "metric"
-        x      = 0; y = 14; width = 12; height = 6
+        x      = 12
+        y      = 8
+        width  = 12
+        height = 6
+        properties = {
+          title  = "Step Functions — Duração p50/p95/p99 (ms)"
+          view   = "timeSeries"
+          region = var.aws_region
+          period = 60
+          metrics = [
+            ["AWS/States", "ExecutionTime", "StateMachineArn", local.sfn_arn, { stat = "p50", label = "p50" }],
+            ["AWS/States", "ExecutionTime", "StateMachineArn", local.sfn_arn, { stat = "p95", label = "p95" }],
+            ["AWS/States", "ExecutionTime", "StateMachineArn", local.sfn_arn, { stat = "p99", label = "p99" }],
+          ]
+        }
+      },
+
+      # Lambda — Erros
+      {
+        type   = "metric"
+        x      = 0
+        y      = 14
+        width  = 12
+        height = 6
         properties = {
           title  = "Lambda — Erros por função"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [for k, name in local.lambda_names :
-            ["AWS/Lambda", "Errors", "FunctionName", name,
-              { stat = "Sum", label = k }]
-          ]
           period = 60
+          metrics = [
+            ["AWS/Lambda", "Errors", "FunctionName", aws_lambda_function.fraud_trigger.function_name, { stat = "Sum", label = "trigger" }],
+            ["AWS/Lambda", "Errors", "FunctionName", aws_lambda_function.validate_payment.function_name, { stat = "Sum", label = "validate" }],
+            ["AWS/Lambda", "Errors", "FunctionName", aws_lambda_function.score_bedrock.function_name, { stat = "Sum", label = "score_bedrock" }],
+            ["AWS/Lambda", "Errors", "FunctionName", aws_lambda_function.apply_rules.function_name, { stat = "Sum", label = "apply_rules" }],
+            ["AWS/Lambda", "Errors", "FunctionName", aws_lambda_function.publish_decision.function_name, { stat = "Sum", label = "publish_decision" }],
+          ]
         }
       },
+
+      # Lambda — Duração p99
       {
         type   = "metric"
-        x      = 12; y = 14; width = 12; height = 6
+        x      = 12
+        y      = 14
+        width  = 12
+        height = 6
         properties = {
           title  = "Lambda — Duração p99 (ms)"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [for k, name in local.lambda_names :
-            ["AWS/Lambda", "Duration", "FunctionName", name,
-              { stat = "p99", label = k }]
-          ]
           period = 60
+          metrics = [
+            ["AWS/Lambda", "Duration", "FunctionName", aws_lambda_function.fraud_trigger.function_name, { stat = "p99", label = "trigger" }],
+            ["AWS/Lambda", "Duration", "FunctionName", aws_lambda_function.validate_payment.function_name, { stat = "p99", label = "validate" }],
+            ["AWS/Lambda", "Duration", "FunctionName", aws_lambda_function.score_bedrock.function_name, { stat = "p99", label = "score_bedrock" }],
+            ["AWS/Lambda", "Duration", "FunctionName", aws_lambda_function.apply_rules.function_name, { stat = "p99", label = "apply_rules" }],
+            ["AWS/Lambda", "Duration", "FunctionName", aws_lambda_function.publish_decision.function_name, { stat = "p99", label = "publish_decision" }],
+          ]
         }
       },
 
-      # ------------------------------------------------------------------ #
-      # Row 5 — ECS running tasks
-      # ------------------------------------------------------------------ #
+      # ECS — Running tasks
       {
         type   = "metric"
-        x      = 0; y = 20; width = 24; height = 6
+        x      = 0
+        y      = 20
+        width  = 24
+        height = 6
         properties = {
           title  = "ECS — Tasks em execução por serviço"
           view   = "timeSeries"
           region = var.aws_region
-          metrics = [
-            ["ECS/ContainerInsights", "RunningTaskCount",
-              "ClusterName", local.cluster_name,
-              "ServiceName", "payment-service",
-              { stat = "Average", label = "payment-service", color = "#1f77b4" }],
-            ["ECS/ContainerInsights", "RunningTaskCount",
-              "ClusterName", local.cluster_name,
-              "ServiceName", "settlement-service",
-              { stat = "Average", label = "settlement-service", color = "#2ca02c" }],
-            ["ECS/ContainerInsights", "RunningTaskCount",
-              "ClusterName", local.cluster_name,
-              "ServiceName", "notification-service",
-              { stat = "Average", label = "notification-service", color = "#ff7f0e" }],
-          ]
           period = 60
+          metrics = [
+            ["ECS/ContainerInsights", "RunningTaskCount", "ClusterName", local.cluster_name, "ServiceName", "payment-service", { stat = "Average", label = "payment-service", color = "#1f77b4" }],
+            ["ECS/ContainerInsights", "RunningTaskCount", "ClusterName", local.cluster_name, "ServiceName", "settlement-service", { stat = "Average", label = "settlement-service", color = "#2ca02c" }],
+            ["ECS/ContainerInsights", "RunningTaskCount", "ClusterName", local.cluster_name, "ServiceName", "notification-service", { stat = "Average", label = "notification-service", color = "#ff7f0e" }],
+          ]
         }
       },
     ]
@@ -216,7 +211,7 @@ resource "aws_cloudwatch_dashboard" "pipeline" {
 }
 
 # --------------------------------------------------------------------------- #
-# CloudWatch Alarms — DLQs (qualquer mensagem = incidente)
+# CloudWatch Alarms — DLQs
 # --------------------------------------------------------------------------- #
 
 resource "aws_cloudwatch_metric_alarm" "dlq_payment_created" {
@@ -230,14 +225,10 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_created" {
   statistic           = "Maximum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    QueueName = aws_sqs_queue.payment_created_dlq.name
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { QueueName = aws_sqs_queue.payment_created_dlq.name }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "dlq_payment_settlement" {
@@ -251,14 +242,10 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_settlement" {
   statistic           = "Maximum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    QueueName = aws_sqs_queue.payment_settlement_dlq.name
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { QueueName = aws_sqs_queue.payment_settlement_dlq.name }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "dlq_payment_notification" {
@@ -272,14 +259,10 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_notification" {
   statistic           = "Maximum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    QueueName = aws_sqs_queue.notification_dlq.name
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { QueueName = aws_sqs_queue.notification_dlq.name }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
@@ -288,7 +271,7 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_notification" {
 
 resource "aws_cloudwatch_metric_alarm" "sfn_fraud_failures" {
   alarm_name          = "${var.project_name}-sfn-fraud-failures-${var.environment}"
-  alarm_description   = "Step Functions fraud-analysis com falhas nos últimos 5 min"
+  alarm_description   = "Step Functions fraud-analysis com mais de 2 falhas em 5 min"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "ExecutionsFailed"
@@ -297,13 +280,9 @@ resource "aws_cloudwatch_metric_alarm" "sfn_fraud_failures" {
   statistic           = "Sum"
   threshold           = 2
   treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    StateMachineArn = local.sfn_arn
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { StateMachineArn = local.sfn_arn }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "sfn_fraud_throttled" {
@@ -317,13 +296,9 @@ resource "aws_cloudwatch_metric_alarm" "sfn_fraud_throttled" {
   statistic           = "Sum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    StateMachineArn = local.sfn_arn
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { StateMachineArn = local.sfn_arn }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
@@ -341,15 +316,10 @@ resource "aws_cloudwatch_metric_alarm" "ecs_payment_service_down" {
   statistic           = "Average"
   threshold           = 1
   treat_missing_data  = "breaching"
-
-  dimensions = {
-    ClusterName = local.cluster_name
-    ServiceName = "payment-service"
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { ClusterName = local.cluster_name, ServiceName = "payment-service" }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_settlement_service_down" {
@@ -363,15 +333,10 @@ resource "aws_cloudwatch_metric_alarm" "ecs_settlement_service_down" {
   statistic           = "Average"
   threshold           = 1
   treat_missing_data  = "breaching"
-
-  dimensions = {
-    ClusterName = local.cluster_name
-    ServiceName = "settlement-service"
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { ClusterName = local.cluster_name, ServiceName = "settlement-service" }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_notification_service_down" {
@@ -385,58 +350,30 @@ resource "aws_cloudwatch_metric_alarm" "ecs_notification_service_down" {
   statistic           = "Average"
   threshold           = 1
   treat_missing_data  = "breaching"
-
-  dimensions = {
-    ClusterName = local.cluster_name
-    ServiceName = "notification-service"
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { ClusterName = local.cluster_name, ServiceName = "notification-service" }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
-# Lambda alarms — score_bedrock (mais crítico: chama Bedrock)
+# Lambda alarm — score_bedrock (chama Bedrock, mais sensível a erros)
 # --------------------------------------------------------------------------- #
 
 resource "aws_cloudwatch_metric_alarm" "lambda_score_bedrock_errors" {
   alarm_name          = "${var.project_name}-lambda-score-bedrock-errors-${var.environment}"
-  alarm_description   = "Lambda score_bedrock com taxa de erro > 10% nos últimos 5 min"
+  alarm_description   = "Lambda score_bedrock com mais de 3 erros em 5 min"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
   threshold           = 3
   treat_missing_data  = "notBreaching"
-
-  metric_query {
-    id          = "error_rate"
-    expression  = "errors / MAX([errors, invocations]) * 100"
-    label       = "Erro %"
-    return_data = true
-  }
-  metric_query {
-    id = "errors"
-    metric {
-      metric_name = "Errors"
-      namespace   = "AWS/Lambda"
-      period      = 300
-      stat        = "Sum"
-      dimensions  = { FunctionName = aws_lambda_function.score_bedrock.function_name }
-    }
-  }
-  metric_query {
-    id = "invocations"
-    metric {
-      metric_name = "Invocations"
-      namespace   = "AWS/Lambda"
-      period      = 300
-      stat        = "Sum"
-      dimensions  = { FunctionName = aws_lambda_function.score_bedrock.function_name }
-    }
-  }
-
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  tags          = local.common_tags
+  dimensions          = { FunctionName = aws_lambda_function.score_bedrock.function_name }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
