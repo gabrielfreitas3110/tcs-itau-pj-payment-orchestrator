@@ -7,7 +7,11 @@ COPY pom.xml .
 COPY .mvn/ .mvn/
 COPY mvnw .
 
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -q
+RUN chmod +x mvnw && \
+    ./mvnw dependency:resolve dependency:resolve-plugins \
+           -Dmaven.wagon.http.retryHandler.count=3 \
+           -Dmaven.wagon.httpconnectionManager.ttlSeconds=30 \
+           -q
 
 COPY src/ src/
 
