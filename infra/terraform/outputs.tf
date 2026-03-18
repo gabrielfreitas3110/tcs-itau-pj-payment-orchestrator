@@ -106,3 +106,17 @@ output "alb_dns_name" {
   description = "DNS público do ALB (ponto de entrada para todos os serviços)"
   value       = aws_lb.main.dns_name
 }
+
+# --------------------------------------------------------------------------- #
+# Step Functions / Lambdas
+# --------------------------------------------------------------------------- #
+
+output "fraud_state_machine_arn" {
+  description = "ARN da Step Functions State Machine de análise de fraude"
+  value       = aws_sfn_state_machine.fraud_analysis.arn
+}
+
+output "fraud_lambda_trigger_arn" {
+  description = "ARN da Lambda trigger (SQS → Step Functions)"
+  value       = aws_lambda_function.fraud_trigger.arn
+}
