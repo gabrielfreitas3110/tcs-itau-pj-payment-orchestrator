@@ -228,7 +228,6 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_created" {
   dimensions          = { QueueName = aws_sqs_queue.payment_created_dlq.name }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "dlq_payment_settlement" {
@@ -245,7 +244,6 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_settlement" {
   dimensions          = { QueueName = aws_sqs_queue.payment_settlement_dlq.name }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "dlq_payment_notification" {
@@ -262,7 +260,6 @@ resource "aws_cloudwatch_metric_alarm" "dlq_payment_notification" {
   dimensions          = { QueueName = aws_sqs_queue.notification_dlq.name }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
@@ -282,7 +279,6 @@ resource "aws_cloudwatch_metric_alarm" "sfn_fraud_failures" {
   treat_missing_data  = "notBreaching"
   dimensions          = { StateMachineArn = local.sfn_arn }
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "sfn_fraud_throttled" {
@@ -298,7 +294,6 @@ resource "aws_cloudwatch_metric_alarm" "sfn_fraud_throttled" {
   treat_missing_data  = "notBreaching"
   dimensions          = { StateMachineArn = local.sfn_arn }
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
@@ -319,7 +314,6 @@ resource "aws_cloudwatch_metric_alarm" "ecs_payment_service_down" {
   dimensions          = { ClusterName = local.cluster_name, ServiceName = "payment-service" }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_settlement_service_down" {
@@ -336,7 +330,6 @@ resource "aws_cloudwatch_metric_alarm" "ecs_settlement_service_down" {
   dimensions          = { ClusterName = local.cluster_name, ServiceName = "settlement-service" }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_notification_service_down" {
@@ -353,7 +346,6 @@ resource "aws_cloudwatch_metric_alarm" "ecs_notification_service_down" {
   dimensions          = { ClusterName = local.cluster_name, ServiceName = "notification-service" }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
@@ -373,7 +365,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_score_bedrock_errors" {
   treat_missing_data  = "notBreaching"
   dimensions          = { FunctionName = aws_lambda_function.score_bedrock.function_name }
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  tags                = local.common_tags
 }
 
 # --------------------------------------------------------------------------- #
