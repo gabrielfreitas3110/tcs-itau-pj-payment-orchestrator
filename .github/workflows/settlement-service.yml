@@ -119,10 +119,50 @@ jobs:
 
       - name: Wait for ECS stability
         run: |
-          aws ecs wait services-stable \
-            --cluster $ECS_CLUSTER \
-            --services $ECS_SERVICE \
-            --region $AWS_REGION
+          echo "Aguardando estabilização do serviço $ECS_SERVICE..."
+          MAX=40
+          for i in $(seq 1 $MAX); do
+            SVC=$(aws ecs describe-services \
+              --cluster $ECS_CLUSTER --services $ECS_SERVICE \
+              --query 'services[0].{running:runningCount,desired:desiredCount,pending:pendingCount,deployments:length(deployments)}' \
+              --output json)
+            RUNNING=$(echo $SVC | jq -r '.running')
+            DESIRED=$(echo $SVC | jq -r '.desired')
+            PENDING=$(echo $SVC | jq -r '.pending')
+            DEPLOYS=$(echo $SVC | jq -r '.deployments')
+            echo "[$i/$MAX] running=$RUNNING desired=$DESIRED pending=$PENDING deployments=$DEPLOYS"
+
+            if [ "$RUNNING" = "$DESIRED" ] && [ "$PENDING" = "0" ] && [ "$DEPLOYS" = "1" ]; then
+              echo "Servico estavel!"
+              exit 0
+            fi
+
+            if [ $((i % 5)) -eq 0 ]; then
+              echo "--- Eventos recentes ---"
+              aws ecs describe-services \
+                --cluster $ECS_CLUSTER --services $ECS_SERVICE \
+                --query 'services[0].events[:5].[createdAt,message]' \
+                --output text
+            fi
+            sleep 15
+          done
+
+          echo "ERRO: servico nao estabilizou em $(( MAX * 15 / 60 )) minutos"
+          echo "--- Eventos finais ---"
+          aws ecs describe-services \
+            --cluster $ECS_CLUSTER --services $ECS_SERVICE \
+            --query 'services[0].events[:10].[createdAt,message]' \
+            --output text
+          echo "--- Tasks paradas recentes ---"
+          STOPPED=$(aws ecs list-tasks --cluster $ECS_CLUSTER \
+            --service-name $ECS_SERVICE --desired-status STOPPED \
+            --query 'taskArns[:3]' --output text)
+          if [ -n "$STOPPED" ]; then
+            aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $STOPPED \
+              --query 'tasks[*].{id:taskArn,status:lastStatus,stopped:stoppedReason,container:containers[0].reason}' \
+              --output json
+          fi
+          exit 1
 
       - name: Smoke test — health check
         run: |
