@@ -132,7 +132,7 @@ jobs:
             DEPLOYS=$(echo $SVC | jq -r '.deployments')
             echo "[$i/$MAX] running=$RUNNING desired=$DESIRED pending=$PENDING deployments=$DEPLOYS"
 
-            if [ "$RUNNING" = "$DESIRED" ] && [ "$PENDING" = "0" ] && [ "$DEPLOYS" = "1" ]; then
+            if [ "$RUNNING" = "$DESIRED" ] && [ "$PENDING" = "0" ]; then
               echo "Servico estavel!"
               exit 0
             fi

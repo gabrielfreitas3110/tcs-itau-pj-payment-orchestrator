@@ -51,7 +51,7 @@ resource "aws_ecs_task_definition" "payment_service" {
 
     secrets = [
       { name = "AWS_SQLSERVER_USERNAME", valueFrom = aws_ssm_parameter.db_username.arn },
-      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_secretsmanager_secret.db_password.arn },
+      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_ssm_parameter.db_password.arn },
       { name = "COGNITO_CLIENT_ID", valueFrom = aws_ssm_parameter.cognito_client_id.arn },
       { name = "COGNITO_CLIENT_SECRET", valueFrom = aws_ssm_parameter.cognito_client_secret.arn },
       { name = "COGNITO_ISSUER_URI", valueFrom = aws_ssm_parameter.cognito_issuer_uri.arn },
@@ -209,7 +209,7 @@ resource "aws_ecs_task_definition" "settlement_service" {
 
     secrets = [
       { name = "AWS_SQLSERVER_USERNAME", valueFrom = aws_ssm_parameter.db_username.arn },
-      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_secretsmanager_secret.db_password.arn },
+      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_ssm_parameter.db_password.arn },
     ]
 
     logConfiguration = {
