@@ -377,6 +377,44 @@ resource "aws_cloudwatch_metric_alarm" "lambda_score_bedrock_errors" {
 }
 
 # --------------------------------------------------------------------------- #
+# SLO — Composite Alarms (Sprint 6)
+# --------------------------------------------------------------------------- #
+
+# SLO de disponibilidade: dispara se QUALQUER serviço ECS estiver fora
+resource "aws_cloudwatch_composite_alarm" "slo_availability" {
+  alarm_name        = "${var.project_name}-slo-availability-${var.environment}"
+  alarm_description = "SLO Disponibilidade: pelo menos um serviço ECS está sem tasks rodando"
+
+  alarm_rule = join(" OR ", [
+    "ALARM(${aws_cloudwatch_metric_alarm.ecs_payment_service_down.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.ecs_settlement_service_down.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.ecs_notification_service_down.alarm_name})",
+  ])
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+  tags          = local.common_tags
+}
+
+# SLO de pipeline: dispara se houver falhas no processamento (DLQs + SFN)
+resource "aws_cloudwatch_composite_alarm" "slo_pipeline" {
+  alarm_name        = "${var.project_name}-slo-pipeline-${var.environment}"
+  alarm_description = "SLO Pipeline: mensagens em DLQ ou falhas em Step Functions indicam degradação do fluxo"
+
+  alarm_rule = join(" OR ", [
+    "ALARM(${aws_cloudwatch_metric_alarm.dlq_payment_created.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.dlq_payment_settlement.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.dlq_payment_notification.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.sfn_fraud_failures.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.sfn_fraud_throttled.alarm_name})",
+  ])
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+  tags          = local.common_tags
+}
+
+# --------------------------------------------------------------------------- #
 # X-Ray Group — correlação de traces do pipeline
 # --------------------------------------------------------------------------- #
 

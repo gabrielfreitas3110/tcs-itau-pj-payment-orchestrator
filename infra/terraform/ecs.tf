@@ -34,7 +34,7 @@ resource "aws_ecs_task_definition" "payment_service" {
   cpu                      = var.ecs_task_cpu
   memory                   = var.ecs_task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  task_role_arn            = aws_iam_role.ecs_task_payment.arn
 
   container_definitions = jsonencode([{
     name  = "payment-service"
@@ -51,9 +51,10 @@ resource "aws_ecs_task_definition" "payment_service" {
 
     secrets = [
       { name = "AWS_SQLSERVER_USERNAME", valueFrom = aws_ssm_parameter.db_username.arn },
-      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_ssm_parameter.db_password.arn },
+      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_secretsmanager_secret.db_password.arn },
       { name = "COGNITO_CLIENT_ID", valueFrom = aws_ssm_parameter.cognito_client_id.arn },
       { name = "COGNITO_CLIENT_SECRET", valueFrom = aws_ssm_parameter.cognito_client_secret.arn },
+      { name = "COGNITO_ISSUER_URI", valueFrom = aws_ssm_parameter.cognito_issuer_uri.arn },
     ]
 
     logConfiguration = {
@@ -77,6 +78,14 @@ resource "aws_ecs_service" "payment_service" {
   desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -87,6 +96,10 @@ resource "aws_ecs_service" "payment_service" {
     target_group_arn = aws_lb_target_group.payment_service.arn
     container_name   = "payment-service"
     container_port   = 8080
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
   }
 
   depends_on = [aws_lb_listener.http]
@@ -141,6 +154,14 @@ resource "aws_ecs_service" "fraud_service" {
   desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -151,6 +172,10 @@ resource "aws_ecs_service" "fraud_service" {
     target_group_arn = aws_lb_target_group.fraud_service.arn
     container_name   = "fraud-service"
     container_port   = 8000
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
   }
 
   depends_on = [aws_lb_listener.http]
@@ -168,7 +193,7 @@ resource "aws_ecs_task_definition" "settlement_service" {
   cpu                      = var.ecs_task_cpu
   memory                   = var.ecs_task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  task_role_arn            = aws_iam_role.ecs_task_settlement.arn
 
   container_definitions = jsonencode([{
     name  = "settlement-service"
@@ -184,7 +209,7 @@ resource "aws_ecs_task_definition" "settlement_service" {
 
     secrets = [
       { name = "AWS_SQLSERVER_USERNAME", valueFrom = aws_ssm_parameter.db_username.arn },
-      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_ssm_parameter.db_password.arn },
+      { name = "AWS_SQLSERVER_PASSWORD", valueFrom = aws_secretsmanager_secret.db_password.arn },
     ]
 
     logConfiguration = {
@@ -208,6 +233,14 @@ resource "aws_ecs_service" "settlement_service" {
   desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -218,6 +251,10 @@ resource "aws_ecs_service" "settlement_service" {
     target_group_arn = aws_lb_target_group.settlement_service.arn
     container_name   = "settlement-service"
     container_port   = 8082
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
   }
 
   depends_on = [aws_lb_listener.http]
@@ -235,7 +272,7 @@ resource "aws_ecs_task_definition" "notification_service" {
   cpu                      = var.ecs_task_cpu
   memory                   = var.ecs_task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  task_role_arn            = aws_iam_role.ecs_task_notification.arn
 
   container_definitions = jsonencode([{
     name  = "notification-service"
@@ -269,6 +306,14 @@ resource "aws_ecs_service" "notification_service" {
   desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -279,6 +324,10 @@ resource "aws_ecs_service" "notification_service" {
     target_group_arn = aws_lb_target_group.notification_service.arn
     container_name   = "notification-service"
     container_port   = 8083
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
   }
 
   depends_on = [aws_lb_listener.http]

@@ -91,3 +91,10 @@ resource "aws_ssm_parameter" "cognito_client_secret" {
   value = aws_cognito_user_pool_client.payment_service_m2m.client_secret
   tags  = local.common_tags
 }
+
+resource "aws_ssm_parameter" "cognito_issuer_uri" {
+  name  = "/${var.project_name}/${var.environment}/cognito/issuer-uri"
+  type  = "String"
+  value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+  tags  = local.common_tags
+}
