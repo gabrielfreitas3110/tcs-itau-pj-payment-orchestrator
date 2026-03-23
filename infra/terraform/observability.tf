@@ -410,7 +410,7 @@ resource "aws_cloudwatch_composite_alarm" "slo_pipeline" {
 # --------------------------------------------------------------------------- #
 
 resource "aws_xray_group" "pj_payment_pipeline" {
-  group_name        = "${var.project_name}-pipeline-${var.environment}"
+  group_name        = "${local.short_prefix}-pipeline"
   filter_expression = "annotation.project = \"${var.project_name}\""
 
   insights_configuration {

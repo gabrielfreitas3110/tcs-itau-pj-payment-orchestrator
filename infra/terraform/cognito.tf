@@ -79,22 +79,25 @@ resource "aws_cognito_user_pool_client" "payment_service_m2m" {
 # --------------------------------------------------------------------------- #
 
 resource "aws_ssm_parameter" "cognito_client_id" {
-  name  = "/${var.project_name}/${var.environment}/cognito/client-id"
-  type  = "String"
-  value = aws_cognito_user_pool_client.payment_service_m2m.id
-  tags  = local.common_tags
+  name      = "/${var.project_name}/${var.environment}/cognito/client-id"
+  type      = "String"
+  value     = aws_cognito_user_pool_client.payment_service_m2m.id
+  overwrite = true
+  tags      = local.common_tags
 }
 
 resource "aws_ssm_parameter" "cognito_client_secret" {
-  name  = "/${var.project_name}/${var.environment}/cognito/client-secret"
-  type  = "SecureString"
-  value = aws_cognito_user_pool_client.payment_service_m2m.client_secret
-  tags  = local.common_tags
+  name      = "/${var.project_name}/${var.environment}/cognito/client-secret"
+  type      = "SecureString"
+  value     = aws_cognito_user_pool_client.payment_service_m2m.client_secret
+  overwrite = true
+  tags      = local.common_tags
 }
 
 resource "aws_ssm_parameter" "cognito_issuer_uri" {
-  name  = "/${var.project_name}/${var.environment}/cognito/issuer-uri"
-  type  = "String"
-  value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
-  tags  = local.common_tags
+  name      = "/${var.project_name}/${var.environment}/cognito/issuer-uri"
+  type      = "String"
+  value     = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+  overwrite = true
+  tags      = local.common_tags
 }

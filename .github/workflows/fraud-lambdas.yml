@@ -1,0 +1,78 @@
+name: Deploy Fraud Step Functions Lambdas
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'lambdas/fraud-step-functions/**'
+      - '.github/workflows/fraud-lambdas.yml'
+
+env:
+  AWS_REGION:    us-east-2
+  LAMBDA_PREFIX: pj-payment-orchestrator-fraud-sfn-dev
+
+jobs:
+  deploy-lambdas:
+    name: Package & Deploy Lambdas
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Deploy all Lambda functions
+        working-directory: lambdas/fraud-step-functions
+        run: |
+          deploy_lambda() {
+            local NAME=$1
+            local DIR=$2
+            local FUNCTION="${LAMBDA_PREFIX}-${NAME}"
+
+            echo "==> Packaging $FUNCTION from $DIR/"
+            cd "$DIR"
+            zip -r "../${NAME}.zip" . -x "*.pyc" -x "__pycache__/*"
+            cd ..
+
+            echo "==> Deploying $FUNCTION"
+            if aws lambda get-function --function-name "$FUNCTION" --no-cli-pager 2>/dev/null; then
+              aws lambda update-function-code \
+                --function-name "$FUNCTION" \
+                --zip-file "fileb://${NAME}.zip" \
+                --no-cli-pager
+              aws lambda wait function-updated \
+                --function-name "$FUNCTION"
+            else
+              echo "Function $FUNCTION does not exist — run terraform apply first to create infrastructure."
+              exit 1
+            fi
+
+            echo "==> $FUNCTION deployed successfully"
+          }
+
+          deploy_lambda "trigger"          "trigger"
+          deploy_lambda "validate-payment" "validate_payment"
+          deploy_lambda "score-bedrock"    "score_bedrock"
+          deploy_lambda "apply-rules"      "apply_rules"
+          deploy_lambda "publish-decision" "publish_decision"
+
+      - name: Verify Lambda functions are active
+        run: |
+          for SUFFIX in trigger validate-payment score-bedrock apply-rules publish-decision; do
+            FUNCTION="${LAMBDA_PREFIX}-${SUFFIX}"
+            STATE=$(aws lambda get-function-configuration \
+              --function-name "$FUNCTION" \
+              --query 'State' --output text)
+            echo "$FUNCTION → State: $STATE"
+            if [ "$STATE" != "Active" ]; then
+              echo "ERROR: $FUNCTION is not Active!"
+              exit 1
+            fi
+          done
+          echo "All Lambda functions are Active."

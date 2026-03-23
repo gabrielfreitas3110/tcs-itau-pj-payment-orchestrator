@@ -40,14 +40,6 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/*"
       },
       {
-        Sid    = "ReadSecretsManager"
-        Effect = "Allow"
-        Action = ["secretsmanager:GetSecretValue"]
-        Resource = [
-          aws_secretsmanager_secret.db_password.arn,
-        ]
-      },
-      {
         Sid      = "DecryptKMS"
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]

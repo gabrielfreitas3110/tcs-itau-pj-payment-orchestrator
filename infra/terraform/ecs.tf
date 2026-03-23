@@ -333,3 +333,31 @@ resource "aws_ecs_service" "notification_service" {
   depends_on = [aws_lb_listener.http]
   tags       = local.common_tags
 }
+
+# --------------------------------------------------------------------------- #
+# CloudWatch Log Groups — ECS (retenção 24h)
+# --------------------------------------------------------------------------- #
+
+resource "aws_cloudwatch_log_group" "ecs_payment_service" {
+  name              = "/pj-payment/payment-service"
+  retention_in_days = 1
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "ecs_fraud_service" {
+  name              = "/pj-payment/fraud-service"
+  retention_in_days = 1
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "ecs_settlement_service" {
+  name              = "/pj-payment/settlement-service"
+  retention_in_days = 1
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "ecs_notification_service" {
+  name              = "/pj-payment/notification-service"
+  retention_in_days = 1
+  tags              = local.common_tags
+}

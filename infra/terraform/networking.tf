@@ -70,7 +70,7 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-alb-sg"
-  description = "Allow HTTP inbound to ALB on all service ports"
+  description = "Allow HTTP inbound to ALB"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -113,6 +113,10 @@ resource "aws_security_group" "alb" {
   }
 
   tags = merge(local.common_tags, { Name = "${var.project_name}-alb-sg" })
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_security_group" "ecs_tasks" {
