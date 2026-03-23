@@ -9,6 +9,11 @@ infra/terraform/.terraform/
 infra/terraform/.terraform.lock.hcl
 infra/terraform/terraform.tfstate
 infra/terraform/terraform.tfstate.backup
+infra/terraform/terraform.tfstate.*.backup
+infra/terraform/tfplan
+
+# Respostas temporárias de API
+response.json
 
 # .env.example — contém chaves AWS
 backend-tcs-itau-pj-payment/.env.example
